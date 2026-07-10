@@ -234,3 +234,7 @@ The MVP has a simple placeholder UI. Future options:
 - TFF content intake workflow
 - Real estate deal analyzer
 - Career opportunity tracker
+
+
+## Functional Supabase Notes
+This build wires `/notes` to the `notes` table in Supabase. Ensure Vercel has `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Run `supabase/schema.sql` in the Supabase SQL Editor if RLS policies have not been created yet.
