@@ -236,5 +236,8 @@ The MVP has a simple placeholder UI. Future options:
 - Career opportunity tracker
 
 
-## Functional Supabase Notes
-This build wires `/notes` to the `notes` table in Supabase. Ensure Vercel has `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Run `supabase/schema.sql` in the Supabase SQL Editor if RLS policies have not been created yet.
+## Functional MVP modules
+Notes, Tasks, Projects, Goals, Knowledge, Dashboard, Automations, browser Voice, integration readiness Settings, and database-backed chat commands are implemented. Run the migration in `supabase/migrations/20260710_functional_mvp.sql`.
+
+## Security note
+The current browser CRUD MVP uses temporary anonymous RLS policies. Do not store highly sensitive data until Supabase Auth and per-user ownership policies are enabled.

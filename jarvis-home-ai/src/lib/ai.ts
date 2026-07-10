@@ -1,17 +1,10 @@
-export type JarvisProvider = "mock" | "openai" | "ollama" | "n8n";
-
-export async function runJarvisCommand(message: string) {
-  const lower = message.toLowerCase();
-  if (lower.includes("prodrop")) return "I’ll route this to ProDrop HQ, mark it as a next action, and prepare it for a future Airtable/Supabase write.";
-  if (lower.includes("plan my week")) return "Weekly plan: protect deep work, review ProDrop, organize TFF footage, run one career move, and do one finance/real-estate review.";
-  if (lower.includes("reminder")) return "Reminder captured in mock mode. Once n8n or a calendar API is connected, this can become a scheduled automation.";
-  if (lower.includes("home") || lower.includes("lights") || lower.includes("thermostat")) return "Home command detected. This will route to Home Assistant once HOME_ASSISTANT_URL and HOME_ASSISTANT_TOKEN are configured server-side.";
-  if (lower.includes("summarize")) return "Summary mode ready. Future version will pull notes, tasks, calendar, Gmail, and project memory before responding.";
-  return "Jarvis received the command. Mock mode is active, but the routing layer is ready for OpenAI, Ollama, n8n, Supabase, and Home Assistant.";
-}
-
-export async function callAiProvider(message: string, provider: JarvisProvider = "mock") {
-  if (provider === "mock") return runJarvisCommand(message);
-  // Add OpenAI/Ollama/n8n provider calls here. Keep API keys server-side only.
-  return runJarvisCommand(message);
-}
+import { supabase } from "@/lib/supabase";
+export type JarvisProvider="setup"|"openai"|"ollama";
+export async function runJarvisCommand(message:string){const text=message.trim(),lower=text.toLowerCase();if(!supabase)return"Supabase is not configured, so I cannot execute data commands yet.";
+if(lower.startsWith("create a note")||lower.startsWith("add note")){const body=text.replace(/^(create a note|add note)[:\s-]*/i,"").trim();if(!body)return"Tell me what the note should say.";const{error}=await supabase.from("notes").insert({title:body.slice(0,70),content:body});return error?`I could not save that note: ${error.message}`:"Note saved to Jarvis memory."}
+if(lower.startsWith("create a task")||lower.startsWith("add task")){const title=text.replace(/^(create a task|add task)[:\s-]*/i,"").trim();if(!title)return"Tell me the task title.";const{error}=await supabase.from("tasks").insert({title,priority:"Medium",status:"Active",completed:false});return error?`I could not save that task: ${error.message}`:"Task created."}
+if(lower.includes("active projects")||lower.includes("show projects")){const{data,error}=await supabase.from("projects").select("name,progress,status").eq("status","Active");return error?error.message:data?.length?data.map(x=>`${x.name}: ${x.progress}%`).join("\n"):"No active projects found."}
+if(lower.includes("summarize my day")){const[{data:t},{data:g}]=await Promise.all([supabase.from("tasks").select("title,due_date,priority").eq("completed",false).limit(8),supabase.from("goals").select("title,progress").eq("status","Active").limit(5)]);return `Open tasks: ${t?.length??0}. Active goals: ${g?.length??0}. ${t?.slice(0,3).map(x=>x.title).join("; ")||"Nothing urgent is queued."}`}
+if(lower.includes("plan my week"))return"Setup mode: I can read your tasks and goals now, but a real AI provider is still needed for a high-quality weekly plan. Connect OpenAI or Ollama in Settings.";
+return"Jarvis data commands are online. Try: “create a task Call supplier,” “create a note ProDrop idea,” “show active projects,” or “summarize my day.” AI generation remains in setup mode until a provider is connected."}
+export async function callAiProvider(message:string){return runJarvisCommand(message)}

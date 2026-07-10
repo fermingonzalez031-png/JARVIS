@@ -40,7 +40,7 @@ export function Sidebar() {
       </nav>
       <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-jarvis-glow/30 bg-jarvis-glow/10 p-4">
         <p className="text-sm font-semibold text-jarvis-glow">System Status</p>
-        <p className="mt-1 text-xs text-jarvis-muted">MVP online. Integrations mocked until API keys are connected.</p>
+        <p className="mt-1 text-xs text-jarvis-muted">Core data online. External integrations show honest setup states until connected.</p>
       </div>
     </aside>
   );

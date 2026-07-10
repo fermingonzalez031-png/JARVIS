@@ -1,61 +1,12 @@
- "use client";
-
-import { FormEvent, useEffect, useState } from "react";
-import { Card } from "@/components/Card";
-import { PageHeader } from "@/components/PageHeader";
-import { supabase } from "@/lib/supabase";
-
-type Note = { id: number | string; title: string; content: string | null; created_at?: string };
-
-export default function NotesPage() {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  async function loadNotes() {
-    if (!supabase) { setMessage("Supabase environment variables are missing."); setLoading(false); return; }
-    const { data, error } = await supabase.from("notes").select("*").order("created_at", { ascending: false });
-    if (error) setMessage(error.message); else setNotes(data ?? []);
-    setLoading(false);
-  }
-
-  useEffect(() => { loadNotes(); }, []);
-
-  async function addNote(e: FormEvent) {
-    e.preventDefault();
-    if (!supabase || !title.trim()) return;
-    setMessage("Saving...");
-    const { error } = await supabase.from("notes").insert({ title: title.trim(), content: content.trim() });
-    if (error) { setMessage(error.message); return; }
-    setTitle(""); setContent(""); setMessage("Saved.");
-    await loadNotes();
-  }
-
-  async function deleteNote(id: Note["id"]) {
-    if (!supabase) return;
-    const { error } = await supabase.from("notes").delete().eq("id", id);
-    if (error) setMessage(error.message); else await loadNotes();
-  }
-
-  return <div>
-    <PageHeader title="Notes" subtitle="Real Jarvis memory, stored in Supabase." />
-    <Card title="Capture a note">
-      <form onSubmit={addNote} className="space-y-3">
-        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Title" className="w-full rounded-xl border border-jarvis-line bg-jarvis-bg/60 px-4 py-3 outline-none focus:border-jarvis-glow" />
-        <textarea value={content} onChange={e=>setContent(e.target.value)} placeholder="What should Jarvis remember?" rows={5} className="w-full rounded-xl border border-jarvis-line bg-jarvis-bg/60 px-4 py-3 outline-none focus:border-jarvis-glow" />
-        <button className="rounded-xl border border-jarvis-glow bg-jarvis-glow/10 px-4 py-2 font-semibold text-jarvis-glow">Save note</button>
-        {message && <p className="text-sm text-jarvis-muted">{message}</p>}
-      </form>
-    </Card>
-    <div className="mt-4 grid gap-4 md:grid-cols-2">
-      {loading ? <Card><p className="text-jarvis-muted">Loading memory...</p></Card> :
-       notes.length === 0 ? <Card><p className="text-jarvis-muted">No notes yet. Create your first real Jarvis memory above.</p></Card> :
-       notes.map(n=><Card key={n.id} title={n.title}>
-         <p className="whitespace-pre-wrap text-jarvis-muted">{n.content}</p>
-         <button onClick={()=>deleteNote(n.id)} className="mt-4 text-xs text-red-300 hover:text-red-200">Delete</button>
-       </Card>)}
-    </div>
-  </div>;
-}
+"use client";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Card } from "@/components/Card"; import { PageHeader } from "@/components/PageHeader";
+import { Field,inputClass,buttonClass,Message,Empty } from "@/components/FormControls"; import { supabase } from "@/lib/supabase"; import type { Note } from "@/lib/models";
+const blank={title:"",content:"",category:"General",tags:""};
+export default function NotesPage(){const [items,setItems]=useState<Note[]>([]),[form,setForm]=useState(blank),[editing,setEditing]=useState<number|null>(null),[q,setQ]=useState(""),[message,setMessage]=useState(""),[loading,setLoading]=useState(true);
+async function load(){if(!supabase){setMessage("Supabase is not configured.");setLoading(false);return} const {data,error}=await supabase.from("notes").select("*").order("updated_at",{ascending:false}); if(error)setMessage(error.message); else setItems(data??[]);setLoading(false)} useEffect(()=>{load()},[]);
+async function save(e:FormEvent){e.preventDefault();if(!supabase||!form.title.trim())return;setMessage("Saving…");const payload={title:form.title.trim(),content:form.content.trim(),category:form.category.trim()||null,tags:form.tags.split(",").map(x=>x.trim()).filter(Boolean),updated_at:new Date().toISOString()}; const result=editing?await supabase.from("notes").update(payload).eq("id",editing):await supabase.from("notes").insert(payload); if(result.error)setMessage(result.error.message);else{setForm(blank);setEditing(null);setMessage("Saved.");await load()}}
+function edit(n:Note){setEditing(n.id);setForm({title:n.title,content:n.content??"",category:n.category??"General",tags:(n.tags??[]).join(", ")});window.scrollTo({top:0,behavior:"smooth"})}
+async function remove(id:number){if(!supabase||!confirm("Delete this note?"))return;const {error}=await supabase.from("notes").delete().eq("id",id);if(error)setMessage(error.message);else await load()}
+const filtered=useMemo(()=>items.filter(n=>`${n.title} ${n.content??""} ${(n.tags??[]).join(" ")}`.toLowerCase().includes(q.toLowerCase())),[items,q]);
+return <div><PageHeader title="Notes" subtitle="Persistent Jarvis memory stored in Supabase."/><Card title={editing?"Edit note":"Capture a note"}><form onSubmit={save} className="grid gap-3 md:grid-cols-2"><Field label="Title"><input className={inputClass} value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></Field><Field label="Category"><input className={inputClass} value={form.category} onChange={e=>setForm({...form,category:e.target.value})}/></Field><Field label="Content" className="md:col-span-2"><textarea rows={5} className={inputClass} value={form.content} onChange={e=>setForm({...form,content:e.target.value})}/></Field><Field label="Tags, comma separated" className="md:col-span-2"><input className={inputClass} value={form.tags} onChange={e=>setForm({...form,tags:e.target.value})}/></Field><div className="flex gap-2"><button className={buttonClass}>{editing?"Update":"Save"}</button>{editing&&<button type="button" className={buttonClass} onClick={()=>{setEditing(null);setForm(blank)}}>Cancel</button>}</div><Message text={message}/></form></Card><div className="my-4"><input className={inputClass} placeholder="Search notes…" value={q} onChange={e=>setQ(e.target.value)}/></div>{loading?<Card>Loading…</Card>:filtered.length===0?<Empty>No notes found.</Empty>:<div className="grid gap-4 md:grid-cols-2">{filtered.map(n=><Card key={n.id} title={n.title} eyebrow={n.category??"Note"}><p className="whitespace-pre-wrap text-jarvis-muted">{n.content}</p><div className="mt-3 flex flex-wrap gap-2">{(n.tags??[]).map(t=><span key={t} className="rounded-full border border-jarvis-line px-2 py-1 text-xs">{t}</span>)}</div><div className="mt-4 flex gap-3 text-sm"><button onClick={()=>edit(n)} className="text-jarvis-glow">Edit</button><button onClick={()=>remove(n.id)} className="text-red-300">Delete</button></div></Card>)}</div>}</div>}
